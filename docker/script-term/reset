@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+#USAGE:  ./reset
+#USAGE:  ./reset -f #reset without prompting for confirmation
+
+force_reset=$1
+if [ "$force_reset" != "-f" ]; then
+
+    echo -n "This will delete all the database files and web files. Do you want to continue?(Y/N)? "
+    read response
+    if [[ $response != "Y" &&  $response != "y" ]]; then
+    echo "Aborting.... "
+    exit 0;
+    fi
+fi
+
+echo "Resetting project ...";
+
+docker-compose stop
+echo
+docker-compose rm -fv
+
+#rm foldlers
+rm -fr html
+rm -fr docker-runtime/mysql
+
+#create folders
+mkdir html
+mkdir docker-runtime/mysql

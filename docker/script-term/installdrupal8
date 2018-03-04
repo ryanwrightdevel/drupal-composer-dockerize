@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+docker-compose up -d --build
+getdrupal
+docker-compose exec web drupal chain  --file=/var/www/configurations/drupal-setup.yml

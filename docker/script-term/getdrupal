@@ -1,0 +1,179 @@
+#!/usr/bin/env php
+<?php
+
+$ACCEPTABLE_DRUPAL_VERSIONS = array(7,8);
+
+$prompt =  "Which version of drupal would you like to install. 7 or 8?: ";
+$requested_drupal_version = strtoupper(readline($prompt));
+
+if(!in_array($requested_drupal_version, $ACCEPTABLE_DRUPAL_VERSIONS)){
+    print "\x1B[0;31mInvalid drupal version specified!\x1B[0m\n";
+    exit(200);
+}
+
+
+
+
+
+#the major version number of drupal to fetch
+$DRUPAL_MAJOR_VERSION=$requested_drupal_version;
+
+#the version number ex. 7.51, latest will fetch the latest release
+$DRUPAL_VERSION="latest";
+
+#html Directory with drupal
+$htmlDir = "html";
+
+#temporary directory
+#use to store the downloaded tar before extracting
+$tmpDir = "source";
+
+
+$currentDir = dirname(__FILE__).'/'.$htmlDir;
+
+
+$latestDrupalVersion = "";
+$phpInstalled = `which php 2> /dev/null`;
+$drushInstalled = `which drush 2> /dev/null`;
+
+
+
+if(empty($phpInstalled)){
+    echo "PHP is not installed!!!!";
+    exit;
+}
+
+//if(empty($drushInstalled)){
+//    echo "Drush is not installed!!!!";
+//}
+
+
+
+$rawHtmlDirPath = dirname(__FILE__).'/./'.$htmlDir;
+$htmlDirPath = realpath($rawHtmlDirPath);
+
+if( !file_exists($rawHtmlDirPath)){
+    print "\x1B[0;31mThe folder does not not exitsts: {$rawHtmlDirPath}\x1B[0m\n";
+    exit(1);
+}
+
+
+$tmpDirPath = realpath($rawHtmlDirPath);
+
+/**
+ * Get Drupal latest version
+ */
+
+$latest = NULL;
+if($DRUPAL_MAJOR_VERSION=="7") {
+    $url = 'http://updates.drupal.org/release-history/drupal/7.x';
+}else {
+    $url = 'http://updates.drupal.org/release-history/drupal/8.x';
+}
+
+
+$context = stream_context_create(array(
+    'http' => array(
+        'method'  => 'GET',
+        'timeout' => 10,
+    ),
+));
+
+$data = file_get_contents($url, FALSE, $context);
+
+if($data)
+    $feed = simplexml_load_string($data);
+
+
+if($feed && $feed instanceof SimpleXMLElement) {
+
+    // Check the property exists and assign
+    if( isset($feed->releases->release[0]->version) ) {
+
+        $latest = $feed->releases->release[0]->version;
+
+        $latestDrupalVersion = $latest;
+        // return $latest;
+    }
+}
+
+$downloadVersion = $latestDrupalVersion;
+
+
+print "Drupal $downloadVersion will be downloaded to $currentDir\n";
+
+chdir($htmlDirPath);
+
+
+$isEmptyHtmlDir = !(new \FilesystemIterator($htmlDirPath))->valid();
+
+$response = "N";
+if(!$isEmptyHtmlDir){
+    print "$currentDir is NOT empty!!\n";
+    print "overwrite: to overwrite current files\n";
+    print "delete: delete all files in folder and download\n";
+    print "cancel: to overwrite current files\n";
+    $prompt =  "What would you like to do? c (o/d/c):";
+    $response = strtoupper(readline($prompt));
+
+    if(empty($response)){ $response = "cancel";};
+
+    if($response != "O" && $response != "D"){
+        print "Exiting...Drupal will not be downloaded!!!\n";
+        exit(200);
+    }else if($response!= "O"){//USER RESPONDED NO
+        print "Continuing...Drupal download will overwrite current files!!!\n";
+    }else{
+        print "Delete...All files in current directory will be deleted!!!";
+    }
+}
+
+if($response == "D"){
+    $prompt =  "Are you sure you want to delete all the files in $currentDir and a new drupal instance? [N] (Y/N): ";
+    $responseConfirm = strtoupper(readline($prompt));
+
+    if($responseConfirm != "Y"){
+        print "Exiting...Drupal will not be downloaded!!!\n";
+        exit(200);
+    }
+
+    //USER RESPONDED YES
+    $dir = $currentDir;
+    $di = new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS);
+    $ri = new RecursiveIteratorIterator($di, RecursiveIteratorIterator::CHILD_FIRST);
+    foreach ( $ri as $file ) {
+        $file->isDir() ?  rmdir($file) : unlink($file);
+    }
+}elseif($response == "O"){
+    $prompt =  "Are you sure you want to overwrite the files in $currentDir with a new drupal instance? [N] (Y/N): ";
+    $responseConfirm = strtoupper(readline($prompt));
+
+    if($responseConfirm != "Y"){
+        print "Exiting...Drupal will not be downloaded!!!\n";
+        exit(200);
+    }
+}else{
+    $prompt =  "Are you sure you want to download a new drupal instance to $currentDir? [N] (Y/N):  ";
+    $responseConfirm = strtoupper(readline($prompt));
+
+    if($responseConfirm != "Y"){
+        print "Exiting...Drupal will not be downloaded!!!\n";
+        exit(200);
+    }
+}
+
+
+
+chdir($currentDir);
+print "Downloading drupal....\n";
+copy("https://ftp.drupal.org/files/projects/drupal-{$downloadVersion}.tar.gz", "drupal.tar.gz");
+
+
+
+
+print "Extracting... to $currentDir\n";
+//print "using tar -xf {$currentDir}/drupal.tar.gz --strip 1";
+`tar -xf {$currentDir}/drupal.tar.gz --strip 1`;
+`rm drupal.tar.gz`;
+print "ALL DONE!!!\nls ";
+

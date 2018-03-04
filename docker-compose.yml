@@ -1,0 +1,55 @@
+version: "2"
+
+services:
+  drupalweb:
+    build: .
+    depends_on:
+      - mariadb
+    volumes:
+      - .:/var/www/html
+      - ./docker/log:/var/www/log
+      - ./docker/data:/var/www/data
+      - ./docker/xdebug/cachegrind:/var/www/xdebug/cachegrind
+      - ./docker/xdebug/trace:/var/www/xdebug/trace
+      - ./docker/mount:/var/www/mount
+    environment:
+      - XDEBUG=on
+      - XDEBUG_REMOTE_IP=192.168.1.84
+
+    ports:
+      - 80
+    #  - 8080:80
+    restart: always
+
+  mariadb:
+    image: mariadb
+    environment:
+#      - MYSQL_RANDOM_ROOT_PASSWORD: 1
+      - MYSQL_DATABASE=drupal
+      - MYSQL_USER=drupal
+      - MYSQL_PASSWORD=drupal
+      - MYSQL_ROOT_PASSWORD=root
+#    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci # The simple way to override the mariadb config.
+    ports:
+      - 3306
+    #  - 3306:3306
+    volumes:
+      - ./docker/mount:/var/www/mount
+      - ./docker/data/mariadb:/var/lib/mysql
+#      - ./docker-runtime/mariadb-init:/docker-entrypoint-initdb.d # Place init .sql file(s) here.
+    restart: always
+
+  solr:
+    image: actency/docker-solr:6.2
+    ports:
+      - 8983
+    #  - 8983:8983
+    restart: always
+
+  memcached:
+    image: memcached:1.4.36
+    ports:
+      - 11211
+    #  - 11211:11211
+
+    restart: always
